@@ -16,6 +16,8 @@ import (
 
 type movieRatings struct {
 	name string
+	column int
+	scale float64
 	ratings []float64
 	rmse float64
 	meanDelta float64
@@ -91,71 +93,29 @@ func analyzeRatings() {
 }
 
 func readRatings() (movieRatings, []movieRatings) {
-	userRatings := newMovieRatings("My Rating")
-	imdbRatings := newMovieRatings("IMDB")
-	rottenCriticsRatings := newMovieRatings("Rotten Tomatoes Critics")
-	rottenUsersRatings := newMovieRatings("Rotten Tomatoes Users")
-	metacriticCriticsRatings := newMovieRatings("Metacritic Critics")
-	metacriticUsersRatings := newMovieRatings("Metacritic Users")
+	ratings := []movieRatings{
+		newMovieRatings("My Rating", 1, 100.0),
+		newMovieRatings("IMDB", 2, 10.0),
+		newMovieRatings("Rotten Tomatoes Critics", 3, 100.0),
+		newMovieRatings("Rotten Tomatoes Users", 4, 100.0),
+		newMovieRatings("Metacritic Critics", 5, 100.0),
+		newMovieRatings("Metacritic Users", 6, 10.0),
+		newMovieRatings("Letterboxd", 7, 5.0),
+	}
 	commons.ReadCSV("ratings.csv", func (columns []string) {
 		name := columns[0]
-		userRatingString := columns[1]
-		imdbRatingString := columns[2]
-		rottenCriticsString := columns[3]
-		rottenUsersString := columns[4]
-		metacriticCriticsString := columns[5]
-		metacriticUsersString := columns[6]
-		userRating, err := commons.ParseFloat(userRatingString)
-		if err != nil {
-			log.Fatalf("Failed to parse user rating of movie %s: %s", name, userRatingString)
+		for i := range ratings {
+			currentRating := &ratings[i]
+			ratingString := columns[currentRating.column]
+			rating, err := commons.ParseFloat(ratingString)
+			if err != nil {
+				log.Fatalf("Failed to parse rating for \"%s\" of movie %s: %s", currentRating.name, name, ratingString)
+			}
+			rating /= currentRating.scale
+			currentRating.add(rating, name)
 		}
-		imdbRating, err := commons.ParseFloat(imdbRatingString)
-		if err != nil {
-			log.Fatalf("Failed to parse IMDB rating of movie %s: %s", name, imdbRatingString)
-		}
-		rottenCritics, err := commons.ParseFloat(rottenCriticsString)
-		if err != nil {
-			log.Fatalf("Failed to parse Rotten Tomatoes critics' rating of movie %s: %s", name, rottenCriticsString)
-		}
-		rottenUsers, err := commons.ParseFloat(rottenUsersString)
-		if err != nil {
-			log.Fatalf("Failed to parse Rotten Tomatoes users' rating of movie %s: %s", name, rottenUsersString)
-		}
-		metacriticCritics, err := commons.ParseFloat(metacriticCriticsString)
-		if err != nil {
-			log.Fatalf("Failed to parse Metacritic critics' rating of movie %s: %s", name, metacriticCriticsString)
-		}
-		metacriticUsers, err := commons.ParseFloat(metacriticUsersString)
-		if err != nil {
-			log.Fatalf("Failed to parse Metacritic users' rating of movie %s: %s", name, metacriticUsersString)
-		}
-		userRating /= 100.0
-		imdbRating /= 10.0
-		rottenCritics /= 100.0
-		rottenUsers /= 100.0
-		metacriticCritics /= 100.0
-		metacriticUsers /= 10.0
-		userRatings.add(userRating, name)
-		imdbRatings.add(imdbRating, name)
-		rottenCriticsRatings.add(rottenCritics, name)
-		rottenUsersRatings.add(rottenUsers, name)
-		metacriticCriticsRatings.add(metacriticCritics, name)
-		metacriticUsersRatings.add(metacriticUsers, name)
 	})
-	ratings := []movieRatings{
-		imdbRatings,
-		rottenCriticsRatings,
-		rottenUsersRatings,
-		metacriticCriticsRatings,
-		metacriticUsersRatings,
-	}
-	return userRatings, ratings
-}
-
-func newMovieRatings(name string) movieRatings {
-	return movieRatings{
-		name: name,
-	}
+	return ratings[0], ratings[1:]
 }
 
 func (m *movieRatings) add(rating float64, name string) {
@@ -189,4 +149,12 @@ func getMeanDelta(values1, values2 []float64) float64 {
 	}
 	mean := stat.Mean(deltas, nil)
 	return mean
+}
+
+func newMovieRatings(name string, column int, scale float64) movieRatings {
+	return movieRatings{
+		name: name,
+		column: column,
+		scale: scale,
+	}
 }
